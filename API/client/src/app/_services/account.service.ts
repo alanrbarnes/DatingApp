@@ -10,7 +10,8 @@ import { User } from '../_models/user';
 export class AccountService {
   private currentUserSource = new ReplaySubject<User>(1); //buffer to store 1 version of the current user
   currentUser$ = this.currentUserSource.asObservable(); //add dollar sign to end since it is an observable
-  baseUrl = 'https://localhost:5001/api/';
+  baseUrl = 'https://datingapp.io:5001/api/';
+  //baseUrl = 'https://localhost:5001/api/';
 
   constructor(private http: HttpClient) { }
 
