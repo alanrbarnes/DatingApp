@@ -11,16 +11,19 @@ using System.Text;
 using API.DTOs;
 using Microsoft.EntityFrameworkCore;
 using API.Interfaces;
+using AutoMapper;
 
 namespace API.Controllers
 {
     public class AccountController : BaseApiController
     {
         private readonly ITokenService _tokenService;
+        private readonly IMapper _mapper;
 
 	    private readonly DataContext _context;
-		public AccountController(DataContext context, ITokenService tokenService)
+		public AccountController(DataContext context, ITokenService tokenService, IMapper mapper)
 		{
+            _mapper = mapper;
             _tokenService = tokenService;
 		    _context = context;
 		}
@@ -29,17 +32,20 @@ namespace API.Controllers
         [HttpPost("register")]
 		public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
 		{
+			//user created
 			if (await UserExists(registerDto.Username)) return BadRequest("Username is taken");
+			//Get Properties from registerDto, mapped into AppUser Object
+			var user = _mapper.Map<AppUser>(registerDto);
+
 		    using var hmac = new HMACSHA512();
 			//hover over method and press F12 to go to implementation
 			//by including using statment garbage collection is garanteed
 			
-			var user = new AppUser
-			{
-			    UserName = registerDto.Username.ToLower(),
-				PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
-				PasswordSalt = hmac.Key
-			};
+			//put user in lowercase
+			user.UserName = registerDto.Username.ToLower();
+			//work out password hash and salt
+			user.PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password));
+			user.PasswordSalt = hmac.Key;
 			
 			_context.Users.Add(user);  //tracks the user
 			await _context.SaveChangesAsync();  //adds the user to the database
@@ -47,7 +53,8 @@ namespace API.Controllers
 			return new UserDto
 			{
 				Username = user.UserName,
-				Token = _tokenService.CreateToken(user)
+				Token = _tokenService.CreateToken(user),
+				KnownAs = user.knownAs
 			};
 		}
 
@@ -74,7 +81,8 @@ namespace API.Controllers
 			{
 				Username = user.UserName,
 				Token = _tokenService.CreateToken(user),
-				PhotoUrl = user.Photos.FirstOrDefault(x => x.IsMain)?.Url
+				PhotoUrl = user.Photos.FirstOrDefault(x => x.IsMain)?.Url,
+				KnownAs = user.knownAs
 			};
 		}
 
